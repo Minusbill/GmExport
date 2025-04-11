@@ -1,52 +1,44 @@
-// 导出 gmgn.ai 的 localStorage 中 wallet_mark_multichain key 的内容
-function exportStorageKey(key = 'wallet_mark_multichain', storageType = 'localStorage', fileName = 'wallet_mark_multichain.json') {
+function exportAndTransformStorageKey(key = 'wallet_mark_multichain', storageType = 'localStorage', fileName = 'wallet_mark_multichain.txt') {
   try {
-    // 选择存储类型
     const storage = storageType === 'localStorage' ? localStorage : sessionStorage;
-
-    // 获取 key 的值
     const data = storage.getItem(key);
-
-    // 检查 key 是否存在
     if (data === null) {
       console.error(`Error: Key "${key}" not found in ${storageType}.`);
       return;
     }
-
-    // 尝试解析为 JSON 并格式化
-    let formattedData;
+    let parsedData;
     try {
-      const parsedData = JSON.parse(data);
-      formattedData = JSON.stringify(parsedData, null, 2); // 格式化 JSON，缩进 2 个空格
+      parsedData = JSON.parse(data);
     } catch (e) {
-      // 如果不是 JSON，直接使用原始数据
-      console.warn(`Warning: "${key}" is not valid JSON, exporting as raw string.`);
-      formattedData = data;
+      console.error(`Error: "${key}" is not valid JSON.`, e.message);
+      return;
     }
-
-    // 输出到控制台，便于调试
-    console.log(`Content of "${key}":`, formattedData);
-
-    // 创建 Blob 对象用于下载
-    const blob = new Blob([formattedData], { type: 'application/json' });
-
-    // 创建临时下载链接
+    let formattedData = '';
+    for (const chain in parsedData) {
+      if (parsedData[chain] && typeof parsedData[chain] === 'object') {
+        for (const address in parsedData[chain]) {
+          const label = parsedData[chain][address];
+          formattedData += `${address}:${label}\n`;
+        }
+      }
+    }
+    if (!formattedData) {
+      console.warn('Warning: No valid wallet data found to export.');
+      return;
+    }
+    console.log(`Formatted content of "${key}":\n${formattedData}`);
+    const blob = new Blob([formattedData], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = fileName; // 指定下载文件名
-    document.body.appendChild(a); // 添加到 DOM
-    a.click(); // 触发下载
-
-    // 清理
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-
     console.log(`Successfully exported "${key}" to ${fileName}`);
   } catch (error) {
     console.error('Export failed:', error.message);
   }
 }
-
-// 直接调用，导出 wallet_mark_multichain
-exportStorageKey('wallet_mark_multichain', 'localStorage', 'wallet_mark_multichain.json');
+exportAndTransformStorageKey();
